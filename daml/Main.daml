@@ -6,8 +6,6 @@ import Templates
 setup : Script ()
 setup = script do
 
-
-
   fooAcademy <- allocatePartyWithHint "Foo Academy" (PartyIdHint "Univ")
   alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
   pr1 <- allocatePartyWithHint "Prof 1" (PartyIdHint "Pr1")
@@ -31,5 +29,36 @@ setup = script do
         student = alice
         university = fooAcademy
         coverLetter= CoverLetter "Hello I want to be a student now"
+
+  return ()
+
+test : Script ()
+test = script do
+  university <- allocateParty "Foo Academy"
+  alice <- allocateParty "Alice"
+  prof1 <- allocateParty "Prof1"
+  prof2 <- allocateParty "Prof2"
+  prof3 <- allocateParty "Prof3"
+  
+  appRequestId <- submit alice do
+    createCmd ApplicationRequest with
+      app = Application with
+        student = alice
+        university = university
+        coverLetter= CoverLetter "Hello I want to be a student now"
+  
+  Some appPendingId <- submit university do
+    exerciseCmd appRequestId ProcessRequest with
+      teachers = [prof1, prof2, prof3]
+      minReviews = 2
+  
+  (reviewRequestId1, _) :: _ <- query @ReviewRequest prof1
+
+  reviewId1 <- submit prof1 do
+    exerciseCmd reviewRequestId1 Evaluate with
+      evaluation = StrongAccept
+  
+  _ <- submit university do
+    exerciseCmd appPendingId GatherReviews
 
   return ()
