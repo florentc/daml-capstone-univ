@@ -1,0 +1,35 @@
+module Main where
+
+import Daml.Script
+import Templates
+
+setup : Script ()
+setup = script do
+
+
+
+  fooAcademy <- allocatePartyWithHint "Foo Academy" (PartyIdHint "Univ")
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  pr1 <- allocatePartyWithHint "Prof 1" (PartyIdHint "Pr1")
+  pr2 <- allocatePartyWithHint "Prof 2" (PartyIdHint "Pr2")
+  pr3 <- allocatePartyWithHint "Prof 3" (PartyIdHint "Pr3")
+  fooAcademyId <- validateUserId "FooAcademy"
+  aliceId <- validateUserId "Alice"
+  prOneId <- validateUserId "Pr1"
+  prTwoId <- validateUserId "Pr2"
+  prThreeId <- validateUserId "Pr3"
+  createUser (User fooAcademyId (Some fooAcademy)) [CanActAs fooAcademy]
+  createUser (User aliceId (Some alice)) [CanActAs alice]
+  createUser (User prOneId (Some pr1)) [CanActAs pr1]
+  createUser (User prTwoId (Some pr2)) [CanActAs pr2]
+  createUser (User prThreeId (Some pr3)) [CanActAs pr3]
+
+
+  submit alice do
+    createCmd ApplicationRequest with
+      app = Application with
+        student = alice
+        university = fooAcademy
+        coverLetter= CoverLetter "Hello I want to be a student now"
+
+  return ()
