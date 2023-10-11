@@ -158,7 +158,7 @@ template ReviewRequest
                     score = toScore evaluation
 
         -- The teacher reviews with a fine tuned score
-        choice Score: ContractId Review
+        choice Grade: ContractId Review
             with
                 score: Int
             controller teacher

@@ -69,7 +69,7 @@ teacherGradesWrong = script do
     (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
         setupReviewRequests
     submitMustFail prof1 do
-        exerciseCmd revReqId1 Score with
+        exerciseCmd revReqId1 Grade with
             score = -12
 
 -- Happy path
@@ -96,7 +96,7 @@ univOffersAdmission = script do
         exerciseCmd revReqId1 Evaluate with
             evaluation = StrongAccept
     revId2 <- submit prof2 do
-        exerciseCmd revReqId2 Score with
+        exerciseCmd revReqId2 Grade with
             score = -3
     submit university do
         exerciseCmd appPendingId GatherReviews with
@@ -114,7 +114,7 @@ aliceTriesToReapply = script do
         exerciseCmd revReqId1 Evaluate with
             evaluation = StrongReject
     revId2 <- submit prof2 do
-        exerciseCmd revReqId2 Score with
+        exerciseCmd revReqId2 Grade with
             score = -3
     submit university do
         exerciseCmd appPendingId GatherReviews with
