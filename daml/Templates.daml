@@ -2,7 +2,6 @@ module Templates where
 
 import qualified DA.Text as Text
 import DA.Foldable (forA_)
-import DA.Optional (catOptionals)
 import DA.List ((\\))
 
 newtype CoverLetter = CoverLetter Text deriving (Eq, Show)
@@ -77,7 +76,7 @@ template ApplicationRequest
                 else
                     do
                         -- Asks every teacher for a review of the application
-                        forA_ teachers (\teacher -> create ReviewRequest with app, teacher) 
+                        forA_ teachers (\teacher -> create ReviewRequest with app, teacher)
                         -- Creates an ApplicationPending contract
                         Some <$>
                             create ApplicationPending with
@@ -125,12 +124,12 @@ template Review
             controller app.student
             do
                 return score
-        
-        -- The university fetches the review score
-        choice FetchScore: Int
+
+        -- The university fetches the review score, prefixed by who gave it
+        choice Fetch: (Party, Int)
             controller app.university
             do
-                return score
+                return (teacher, score)
 
 
 -- A review request
@@ -155,7 +154,7 @@ template ReviewRequest
                     app
                     teacher
                     score = toScore evaluation
-        
+
         -- The teacher reviews with a fine tuned score
         choice Score: ContractId Review
             with
@@ -167,7 +166,7 @@ template ReviewRequest
                     app
                     teacher
                     score = toScore score
-        
+
         -- The university cancels the review request when it is no longer needed
         choice Cancel: ()
             controller app.university
@@ -187,7 +186,7 @@ template ApplicationPending
         teachers: [Party] -- Reviewers left to answer
         reviewsLeft: Int -- How many reviews left before it is possible to decide
         score: Int -- The current score
-    
+
     where
         signatory app.university
         key appKey app: ApplicationKey
@@ -195,18 +194,13 @@ template ApplicationPending
         ensure validCoverLetter app.coverLetter
 
         choice GatherReviews: GatherReviewsResult
+            with
+                reviewsIds: [ContractId Review]
             controller app.university
             do
                 -- Fetch the new available reviews
-                newReviews <- catOptionals <$>
-                    forA teachers (\teacher -> do
-                        hasReviewed <- visibleByKey @Review (appKey app, teacher)
-                        if hasReviewed then
-                            Some . (teacher,) <$> exerciseByKey @Review (appKey app, teacher) FetchScore
-                        else
-                            return None    
-                    )
-                
+                newReviews <- forA reviewsIds (`exercise` Fetch)
+
                 -- Compute the new state
                 let reviewsLeft' = reviewsLeft - length newReviews
                 let teachers' = teachers \\ (fst <$> newReviews)
@@ -214,11 +208,8 @@ template ApplicationPending
 
                 -- If the decision can be taken
                 if reviewsLeft' <= 0 then do
-                    -- Cancel the remaining requests for reviews
-                    forA_ teachers' (\teacher ->
-                        exerciseByKey @ReviewRequest (appKey app, teacher) Cancel)
                     -- Create an offer or rejection
-                    if score > 0 then
+                    if score' > 0 then
                         ReviewsOffer <$> create Offer with app
                     else
                         ReviewsReject <$> create Rejection with app
