@@ -26,7 +26,7 @@ based on a score determined by the gathered reviews.
 ### III. Challenge(s)
 
 * In the initial design, the `GatherReviews` choice performed a lookup for all
-  the `Review` contracts onchain, based on their `(university, student,
+  the `Review` contracts on ledger, based on their `(university, student,
   teacher)` key, iterating on the *teachers*. I realised that it was possible
   for an observer to fetch, but not lookup by key. `Review` contracts would
   have needed the university as a key maintainer, and in turn as a signatory,
@@ -38,10 +38,10 @@ based on a score determined by the gathered reviews.
        `AddReview` and check with an assertion that the controller is indeed
        part of the teachers mentioned in the current payload. This is what I
        would have done in a real case.
-    2. **Current choice:** Instead of an onchain lookup, perform an offchain
+    2. **Current choice:** Instead of an on ledger lookup, perform an offchain
        query of the reviews and pass their contract ids as a parameter of
        `GatherReviews`. I chose this alternative because it required little
-       alteration and made it possible to showcase more onchain and offchain
+       alteration and made it possible to showcase more on and off ledger
        iterations for the sake of this capstone project. This introduces a few
        shortcomings in the business logic:
         * The university can use selection bias and only cherry pick the
