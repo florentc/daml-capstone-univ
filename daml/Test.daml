@@ -5,36 +5,128 @@ import Templates
 import Setup
 import qualified DA.Set as Set
 
-test : Script ()
-test = script do
+-- Unhappy path
+-- Alice submits an application with a cover letter that is too short.
+invalidCoverLetter : Script ()
+invalidCoverLetter = script do
     ExampleParties{..} <- setupPartiesAndUsers
-    
-    appRequestId <- submit alice do
+    submitMustFail alice do
+        createCmd ApplicationRequest with
+            app = Application with
+                student = alice
+                university = university
+                coverLetter= CoverLetter "Hi!"
+
+-- Happy path
+-- Alice submits an application with a cover letter that meets the requirements.
+aliceApplies : Script ()
+aliceApplies = script do
+    ExampleParties{..} <- setupPartiesAndUsers
+    submit alice do
         createCmd ApplicationRequest with
             app = Application with
                 student = alice
                 university = university
                 coverLetter= CoverLetter "Hello I want to be a student now"
-    
-    Some appPendingId <- submit university do
+    return ()
+
+-- Unhappy path
+-- The university requires more reviews than teachers it requests reviews to.
+notEnoughReviewers : Script ()
+notEnoughReviewers = script do
+    (ExampleParties{..}, appRequestId) <- setupSampleApplicationRequest
+    submitMustFail university do
+        exerciseCmd appRequestId ProcessRequest with
+            teachers = [prof1, prof2, prof3]
+            minReviews = 7
+
+-- Happy path
+-- The university puts an application to review
+enoughReviewers : Script ()
+enoughReviewers = script do
+    (ExampleParties{..}, appRequestId) <- setupSampleApplicationRequest
+    submit university do
         exerciseCmd appRequestId ProcessRequest with
             teachers = [prof1, prof2, prof3]
             minReviews = 2
-    
-    (reviewRequestId1, _) :: _ <- query @ReviewRequest prof1
-    (reviewRequestId2, _) :: _ <- query @ReviewRequest prof2
-    (reviewRequestId3, _) :: _ <- query @ReviewRequest prof3
+    return ()
 
-    reviewId1 <- submit prof1 do
-        exerciseCmd reviewRequestId1 Evaluate with
+-- Happy path
+-- A teacher reviews an application with a favorable evaluation
+teacherEvaluates : Script ()
+teacherEvaluates = script do
+    (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
+        setupReviewRequests
+    submit prof1 do
+        exerciseCmd revReqId1 Evaluate with
             evaluation = StrongAccept
+    return ()
 
-    reviewId2 <- submit prof2 do
-        exerciseCmd reviewRequestId2 Evaluate with
-            evaluation = Reject
-    
-    _ <- submit university do
+-- Unhappy path
+-- A teacher reviews an application with a manual score that is invalid
+teacherGradesWrong : Script ()
+teacherGradesWrong = script do
+    (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
+        setupReviewRequests
+    submitMustFail prof1 do
+        exerciseCmd revReqId1 Score with
+            score = -12
+
+-- Happy path
+-- The university gathers a review, but it is not enough to decide
+univGathersReview : Script ()
+univGathersReview = script do
+    (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
+        setupReviewRequests
+    revId1 <- submit prof1 do
+        exerciseCmd revReqId1 Evaluate with
+            evaluation = StrongAccept
+    submit university do
         exerciseCmd appPendingId GatherReviews with
-            reviewsIds = Set.fromList [reviewId1, reviewId2]
+            reviewsIds = Set.fromList [revId1]
+    return ()
 
+-- Happy path
+-- The university gathers enough reviews to offer admission
+univOffersAdmission : Script ()
+univOffersAdmission = script do
+    (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
+        setupReviewRequests
+    revId1 <- submit prof1 do
+        exerciseCmd revReqId1 Evaluate with
+            evaluation = StrongAccept
+    revId2 <- submit prof2 do
+        exerciseCmd revReqId2 Score with
+            score = -3
+    submit university do
+        exerciseCmd appPendingId GatherReviews with
+            reviewsIds = Set.fromList [revId1, revId2]
+    return ()
+
+-- Scenario, happy path 
+-- A student fails admission and tries to apply again,
+-- which is discarded (None) because of previous rejection.
+aliceTriesToReapply : Script ()
+aliceTriesToReapply = script do
+    (ExampleParties{..}, appPendingId, [revReqId1, revReqId2, revReqId3]) <-
+        setupReviewRequests
+    revId1 <- submit prof1 do
+        exerciseCmd revReqId1 Evaluate with
+            evaluation = StrongReject
+    revId2 <- submit prof2 do
+        exerciseCmd revReqId2 Score with
+            score = -3
+    submit university do
+        exerciseCmd appPendingId GatherReviews with
+            reviewsIds = Set.fromList [revId1, revId2]
+    appRequestId <- submit alice do
+        createCmd ApplicationRequest with
+            app = Application with
+                student = alice
+                university = university
+                coverLetter= CoverLetter "Please I really want to be a student"
+    submit university do
+        exerciseCmd appRequestId ProcessRequest with
+            teachers = [prof1, prof2, prof3]
+            minReviews = 2
     return ()

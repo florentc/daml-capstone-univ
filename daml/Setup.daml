@@ -1,6 +1,8 @@
 module Setup where
 
 import Daml.Script
+import Templates
+import qualified DA.List as List
 
 data ExampleParties = ExampleParties with
     university: Party
@@ -9,17 +11,50 @@ data ExampleParties = ExampleParties with
     prof2: Party
     prof3: Party
 
-createPartyAndUser: Text -> Script Party
-createPartyAndUser id = script do
+-- This allocates a party with the given description and creates a user for the front end.
+setupPartyAndUser: Text -> Script Party
+setupPartyAndUser id = script do
     party <- allocatePartyWithHint id (PartyIdHint id)
     userId <- validateUserId id
     createUser (User userId (Some party)) [CanActAs party]
     return party
 
+-- This allocates parties and create users to play with test scenarios
 setupPartiesAndUsers: Script ExampleParties
 setupPartiesAndUsers = script do
     [univ, alice, pr1, pr2, pr3] <-
         forA
             ["Univ", "Alice", "Prof1", "Prof2", "Prof3"]
-            createPartyAndUser
+            setupPartyAndUser
     return $ ExampleParties univ alice pr1 pr2 pr3
+
+-- This bootstraps a scenario in which Alice submits a valid application request
+setupSampleApplicationRequest: Script (ExampleParties, ContractId ApplicationRequest)
+setupSampleApplicationRequest = script do
+    parties@ExampleParties{..} <- setupPartiesAndUsers
+    appRequestId <- submit alice do
+        createCmd ApplicationRequest with
+            app = Application with
+                student = alice
+                university = university
+                coverLetter= CoverLetter "Hello I want to be a student now"
+    return (parties, appRequestId)
+
+-- This bootstraps a scenario in which the university asks teachers for reviews
+setupReviewRequests: Script (ExampleParties, ContractId ApplicationPending, [ContractId ReviewRequest])
+setupReviewRequests = script do
+    parties@ExampleParties{..} <- setupPartiesAndUsers
+    appRequestId <- submit alice do
+        createCmd ApplicationRequest with
+            app = Application with
+                student = alice
+                university = university
+                coverLetter= CoverLetter "Hello I want to be a student now"
+    Some appPendingId <- submit university do
+        exerciseCmd appRequestId ProcessRequest with
+            teachers = [prof1, prof2, prof3]
+            minReviews = 2
+    reviewRequests <-
+        map (fst . List.head) <$>
+        forA [prof1, prof2, prof3] (query @ReviewRequest)
+    return (parties, appPendingId, reviewRequests)
