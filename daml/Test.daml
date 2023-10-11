@@ -3,6 +3,7 @@ module Test where
 import Daml.Script
 import Templates
 import Setup
+import qualified DA.Set as Set
 
 test : Script ()
 test = script do
@@ -34,6 +35,6 @@ test = script do
     
     _ <- submit university do
         exerciseCmd appPendingId GatherReviews with
-            reviewsIds = [reviewId1, reviewId2]
+            reviewsIds = Set.fromList [reviewId1, reviewId2]
 
     return ()

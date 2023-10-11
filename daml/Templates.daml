@@ -3,6 +3,8 @@ module Templates where
 import qualified DA.Text as Text
 import DA.Foldable (forA_)
 import DA.List ((\\))
+import DA.Set (Set)
+import qualified DA.Set as Set
 
 newtype CoverLetter = CoverLetter Text deriving (Eq, Show)
 
@@ -195,11 +197,11 @@ template ApplicationPending
 
         choice GatherReviews: GatherReviewsResult
             with
-                reviewsIds: [ContractId Review]
+                reviewsIds: Set (ContractId Review)
             controller app.university
             do
                 -- Fetch the new available reviews
-                newReviews <- forA reviewsIds (`exercise` Fetch)
+                newReviews <- forA (Set.toList reviewsIds) (`exercise` Fetch)
 
                 -- Compute the new state
                 let reviewsLeft' = reviewsLeft - length newReviews
