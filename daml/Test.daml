@@ -37,7 +37,7 @@ notEnoughReviewers = script do
     (ExampleParties{..}, appRequestId) <- setupSampleApplicationRequest
     submitMustFail university do
         exerciseCmd appRequestId ProcessRequest with
-            teachers = [prof1, prof2, prof3]
+            teachers = Set.fromList [prof1, prof2, prof3]
             minReviews = 7
 
 -- Happy path
@@ -47,7 +47,7 @@ enoughReviewers = script do
     (ExampleParties{..}, appRequestId) <- setupSampleApplicationRequest
     submit university do
         exerciseCmd appRequestId ProcessRequest with
-            teachers = [prof1, prof2, prof3]
+            teachers = Set.fromList [prof1, prof2, prof3]
             minReviews = 2
     return ()
 
@@ -127,6 +127,6 @@ aliceTriesToReapply = script do
                 coverLetter= CoverLetter "Please I really want to be a student"
     submit university do
         exerciseCmd appRequestId ProcessRequest with
-            teachers = [prof1, prof2, prof3]
+            teachers = Set.fromList [prof1, prof2, prof3]
             minReviews = 2
     return ()

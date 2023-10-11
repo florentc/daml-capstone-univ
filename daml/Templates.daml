@@ -66,11 +66,11 @@ template ApplicationRequest
         -- Process the request and create an actual application if the student is not already given an offer or under a previous rejection
         choice ProcessRequest: Optional (ContractId ApplicationPending)
             with
-                teachers: [Party]
+                teachers: Set Party
                 minReviews: Int
             controller app.university
             do
-                assertMsg "Not enough reviewers" (length teachers >= minReviews)
+                assertMsg "Not enough reviewers" (Set.size teachers >= minReviews)
                 enrolled <- visibleByKey @Offer (appKey app)
                 rejected <- visibleByKey @Rejection (appKey app)
                 if enrolled || rejected then
@@ -185,7 +185,7 @@ data GatherReviewsResult =
 template ApplicationPending
     with
         app: Application
-        teachers: [Party] -- Reviewers left to answer
+        teachers: Set Party -- Reviewers left to answer
         reviewsLeft: Int -- How many reviews left before it is possible to decide
         score: Int -- The current score
 
@@ -205,7 +205,7 @@ template ApplicationPending
 
                 -- Compute the new state
                 let reviewsLeft' = reviewsLeft - length newReviews
-                let teachers' = teachers \\ (fst <$> newReviews)
+                let teachers' = Set.fromList $ Set.toList teachers \\ (fst <$> newReviews)
                 let score' = score + sum (snd <$> newReviews)
 
                 -- If the decision can be taken

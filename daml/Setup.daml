@@ -3,6 +3,7 @@ module Setup where
 import Daml.Script
 import Templates
 import qualified DA.List as List
+import qualified DA.Set as Set
 
 data ExampleParties = ExampleParties with
     university: Party
@@ -52,7 +53,7 @@ setupReviewRequests = script do
                 coverLetter= CoverLetter "Hello I want to be a student now"
     Some appPendingId <- submit university do
         exerciseCmd appRequestId ProcessRequest with
-            teachers = [prof1, prof2, prof3]
+            teachers = Set.fromList [prof1, prof2, prof3]
             minReviews = 2
     reviewRequests <-
         map (fst . List.head) <$>
