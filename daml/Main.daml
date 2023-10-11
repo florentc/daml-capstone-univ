@@ -1,19 +1,9 @@
 module Main where
 
 import Daml.Script
-import Templates
 import Setup
 
 setup : Script ()
 setup = script do
-
     ExampleParties{..} <- setupPartiesAndUsers
-
-    submit alice do
-      createCmd ApplicationRequest with
-        app = Application with
-            student = alice
-            university
-            coverLetter= CoverLetter "Hello I want to be a student now"
-
     return ()
