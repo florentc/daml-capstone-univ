@@ -1,0 +1,25 @@
+module Setup where
+
+import Daml.Script
+
+data ExampleParties = ExampleParties with
+    university: Party
+    alice: Party
+    prof1: Party
+    prof2: Party
+    prof3: Party
+
+createPartyAndUser: Text -> Script Party
+createPartyAndUser id = script do
+    party <- allocatePartyWithHint id (PartyIdHint id)
+    userId <- validateUserId id
+    createUser (User userId (Some party)) [CanActAs party]
+    return party
+
+setupPartiesAndUsers: Script ExampleParties
+setupPartiesAndUsers = script do
+    [univ, alice, pr1, pr2, pr3] <-
+        forA
+            ["Univ", "Alice", "Prof1", "Prof2", "Prof3"]
+            createPartyAndUser
+    return $ ExampleParties univ alice pr1 pr2 pr3

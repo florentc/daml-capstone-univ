@@ -1,0 +1,39 @@
+module Test where
+
+import Daml.Script
+import Templates
+import Setup
+
+test : Script ()
+test = script do
+    ExampleParties{..} <- setupPartiesAndUsers
+    
+    appRequestId <- submit alice do
+        createCmd ApplicationRequest with
+            app = Application with
+                student = alice
+                university = university
+                coverLetter= CoverLetter "Hello I want to be a student now"
+    
+    Some appPendingId <- submit university do
+        exerciseCmd appRequestId ProcessRequest with
+            teachers = [prof1, prof2, prof3]
+            minReviews = 2
+    
+    (reviewRequestId1, _) :: _ <- query @ReviewRequest prof1
+    (reviewRequestId2, _) :: _ <- query @ReviewRequest prof2
+    (reviewRequestId3, _) :: _ <- query @ReviewRequest prof3
+
+    reviewId1 <- submit prof1 do
+        exerciseCmd reviewRequestId1 Evaluate with
+            evaluation = StrongAccept
+
+    reviewId2 <- submit prof2 do
+        exerciseCmd reviewRequestId2 Evaluate with
+            evaluation = Reject
+    
+    _ <- submit university do
+        exerciseCmd appPendingId GatherReviews with
+            reviewsIds = [reviewId1, reviewId2]
+
+    return ()
